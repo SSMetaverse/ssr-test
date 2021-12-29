@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "ssr-test"
+version = "0.1.0"
+description = "Simple server side rendering prototype"
+authors = ["George Zhang <geetransit@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.11"
+moderngl = "^5.6.4"
+numpy = "^1.21.5"
+pyrr = "^0.10.3"
+fastapi = "^0.70.1"
+Pillow = "^8.4.0"
+uvicorn = {extras = ["standard"], version = "^0.16.0"}
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
