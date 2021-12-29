@@ -23,3 +23,7 @@ Open http://localhost:8000/render
 Pass query arguments (x, y, z, rx, ry, rz, width, height) for a different render
 
 Example http://localhost:8000/render?x=-1&z=1&rx=0.2&ry=-0.2&rz=-0.2
+
+## Other
+
+Regenerate requirements.txt using `poetry export --without-hashes > requirements.txt`
