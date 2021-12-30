@@ -6,13 +6,14 @@ import numpy as np
 import pyrr
 import fastapi
 import PIL.Image
+import pywavefront
 
 app = fastapi.FastAPI()
 
 # OpenGL context (standalone means we attach a render buffer)
 ctx = moderngl.create_context(standalone=True, require=330)
 
-# Minimal shaders
+# Minimal shaders (note that in_norm and v_norm get optimized away)
 program = ctx.program(
     vertex_shader='''
         #version 330
@@ -21,18 +22,32 @@ program = ctx.program(
         uniform mat4 view;
         in vec3 in_vert;
         in vec3 in_color;
+        in vec3 in_norm;
+        in vec2 in_text;
         out vec3 color;
+        out vec3 v_norm;
+        out vec2 v_text;
         void main() {
             gl_Position = projection * view * model * vec4(in_vert, 1.0);
             color = in_color;
+            v_norm = in_norm;
+            v_text = in_text;
         }
     ''',
     fragment_shader='''
         #version 330
+        uniform sampler2D texture_sampler;
+        uniform int isTextured;
         in vec3 color;
+        in vec3 v_norm;
+        in vec2 v_text;
         out vec4 fragColor;
         void main() {
-            fragColor = vec4(color, 1.0);
+            if (isTextured > 0) {
+                fragColor = texture(texture_sampler, v_text);
+            } else {
+                fragColor = vec4(color, 1.0);
+            };
         }
     ''',
 )
@@ -47,6 +62,33 @@ vertices = np.hstack([positions, colours])
 # Load into a vertex array
 vbo = ctx.buffer(vertices)
 vao = ctx.simple_vertex_array(program, vbo, "in_vert", "in_color")
+
+# Load cube.obj
+cube = pywavefront.Wavefront("cube.obj")
+assert len(cube.materials) == 1
+material, = cube.materials.values()
+assert material.vertex_format == "T2F_N3F_V3F"
+cube_data = np.array(material.vertices, dtype="f4")
+cube_data = cube_data.reshape(-1, material.vertex_size)
+
+# Get only the texture and vertex data (ignore the normals)
+cube_t = cube_data[:, 0:2]
+cube_n = cube_data[:, 2:5]
+cube_v = cube_data[:, 5:8]
+cube_vertices = np.hstack([cube_t, cube_v])
+
+# Create VBO and VAO
+cube_vbo = ctx.buffer(cube_vertices)
+cube_vao = ctx.simple_vertex_array(program, cube_vbo, "in_text", "in_vert")
+
+# Load grassblock.png (flip vertically because OpenGL has 0,0 at bottom left)
+cube_image = PIL.Image.open("grassblock.png")
+cube_image = cube_image.transpose(PIL.Image.FLIP_TOP_BOTTOM)
+cube_texture = ctx.texture(cube_image.size, 4, cube_image.tobytes())
+cube_texture.filter = moderngl.NEAREST, moderngl.NEAREST
+
+# Enable depth testing (so the cube doesnt get rendered on top of the triangle)
+ctx.enable(moderngl.DEPTH_TEST)
 
 # Server endpoint that returns a PNG image
 @app.get(
@@ -90,7 +132,16 @@ async def render(
     )
 
     # Render the triangle
+    program["isTextured"] = 0
     vao.render(moderngl.TRIANGLES)
+
+    # Render the cube
+    program["model"].write(
+        pyrr.matrix44.create_from_translation([0, 0, -3], dtype="f4")
+    )
+    program["isTextured"] = 1
+    cube_texture.use()
+    cube_vao.render(moderngl.TRIANGLES)
 
     # Convert into a PNG image format
     image = PIL.Image.new("RGB", fbo.size)

@@ -13,6 +13,7 @@ pyrr = "^0.10.3"
 fastapi = "^0.70.1"
 Pillow = "^8.4.0"
 uvicorn = {extras = ["standard"], version = "^0.16.0"}
+PyWavefront = "^1.3.3"
 
 [tool.poetry.dev-dependencies]
 
