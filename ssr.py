@@ -152,3 +152,7 @@ async def render(
 
     # Return the image
     return fastapi.responses.Response(data.read(), media_type="image/png")
+
+@app.get("/", response_class=fastapi.responses.HTMLResponse)
+async def root():
+    return '''<p>go check out <a href="docs">docs</a> or something</p>'''
