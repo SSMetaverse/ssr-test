@@ -8,6 +8,8 @@ import fastapi
 import PIL.Image
 import pywavefront
 
+from root_path_middleware import RootPathMiddleware
+
 app = fastapi.FastAPI()
 
 # OpenGL context (standalone means we attach a render buffer)
@@ -156,3 +158,6 @@ async def render(
 @app.get("/", response_class=fastapi.responses.HTMLResponse)
 async def root():
     return '''<p>go check out <a href="docs">docs</a> or something</p>'''
+
+# Middleware to make docs work when there's a reverse proxy
+app.add_middleware(RootPathMiddleware)
